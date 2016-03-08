@@ -24,18 +24,29 @@
         android:id="@+id/button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/translate_button_text"
+        android:text="@string/translate_json_button_text"
         android:layout_below="@+id/editText"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
-        android:onClick="onTranslateClick" />
+        android:onClick="onTranslateJsonClick" />
+
+    <Button
+        android:id="@+id/buttonXml"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/translate_xml_button_text"
+        android:layout_below="@+id/button"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:onClick="onTranslateXmlClick" />
 
     <TextView
         android:id="@+id/translateTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/translation_text_view"
+        android:layout_below="@+id/buttonXml"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
-        android:layout_marginTop="94dp"/>
+        android:layout_marginTop="15dp"/>
 </RelativeLayout>
