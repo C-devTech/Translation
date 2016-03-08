@@ -141,21 +141,29 @@ public class MainActivity extends AppCompatActivity {
             // HttpURLConnection uses the GET method by default. It will use POST if
             // setDoOutput(true) has been called. Other HTTP methods (OPTIONS, HEAD, PUT, DELETE
             // and TRACE) can be used with setRequestMethod(String)
-            HttpURLConnection urlConnection;
+            HttpURLConnection urlConnection = null;
 
             // Provides the URL for the post request
-            URL url;
+            URL url = null;
 
             // Allows you to input a stream of bytes from the URL
             InputStream inputStream = null;
 
             try {
+                // Provide the URL for the POST request
                 url = new URL("http://newjustin.com/translateit.php?action=translations&english_words="
                         + wordsToTranslate);
 
-                // The client calls for the post request to execute and sends the results back
+                // Open a new connection as specified by the URL
                 urlConnection = (HttpURLConnection) url.openConnection();
 
+                // Define that the data expected is in JSON format
+                urlConnection.setRequestProperty("Content-type", "application/json");
+
+                // Define the request method as POST, default is POST but provides example code
+                urlConnection.setRequestMethod("POST");
+
+                // The client calls for the post request to execute and sends the results back
                 // Get the content sent
                 inputStream = new BufferedInputStream(urlConnection.getInputStream());
 
@@ -194,6 +202,11 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
+            }
+            finally {
+                if (urlConnection != null) {
+                    urlConnection.disconnect();
+                }
             }
 
             return null;
