@@ -13,7 +13,7 @@
     tools:showIn="@layout/activity_main">
 
     <EditText
-        android:id="@+id/editText"
+        android:id="@+id/words_entered_edit_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
@@ -21,31 +21,61 @@
         android:layout_alignParentStart="true" />
 
     <Button
-        android:id="@+id/button"
+        android:id="@+id/speak_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/speak_button"
+        android:layout_below="@+id/words_entered_edit_text"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:onClick="acceptSpeechInput" />
+
+    <Button
+        android:id="@+id/translate_json_button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/translate_json_button_text"
-        android:layout_below="@+id/editText"
+        android:layout_below="@+id/speak_button"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
         android:onClick="onTranslateJsonClick" />
 
     <Button
-        android:id="@+id/buttonXml"
+        android:id="@+id/translate_xml_button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/translate_xml_button_text"
-        android:layout_below="@+id/button"
+        android:layout_below="@+id/translate_json_button"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
         android:onClick="onTranslateXmlClick" />
 
+    <Spinner
+        android:id="@+id/lang_spinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/translate_xml_button"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:entries="@array/language_array"
+        android:layout_marginTop="10dp"/>
+
+    <Button
+        android:id="@+id/read_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/read_button"
+        android:layout_below="@+id/lang_spinner"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:onClick="readTheText" />
+
     <TextView
-        android:id="@+id/translateTextView"
+        android:id="@+id/translated_text_view"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/translation_text_view"
-        android:layout_below="@+id/buttonXml"
+        android:layout_below="@+id/read_button"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
         android:layout_marginTop="15dp"/>

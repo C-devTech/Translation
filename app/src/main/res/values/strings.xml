@@ -6,4 +6,19 @@
     <string name="translation_text_view">Enter words above for translation</string>
     <string name="getting_translations_toast_text">Getting translations...</string>
     <string name="enter_words_toast_text">Enter words to translate!</string>
+    <string name="read_button">Read</string>
+    <string name="speak_button">Speak</string>
+    <string name="speech_input_phrase">Say the Phrase</string>
+    <string name="stt_not_supported_message">Your Device Doesn\'t Support Speech to Text</string>
+
+    <string-array name="language_array">
+        <item>Dutch</item>
+        <item>French</item>
+        <item>German</item>
+        <item>Italian</item>
+        <item>Portuguese</item>
+        <item>Russian</item>
+        <item>Spanish</item>
+    </string-array>
+
 </resources>

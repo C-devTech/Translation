@@ -1,15 +1,23 @@
 package com.cdevtech.translation;
 
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
+import android.speech.RecognizerIntent;
+import android.speech.tts.TextToSpeech;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.text.method.ScrollingMovementMethod;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -22,6 +30,7 @@ import org.xmlpull.v1.XmlPullParserFactory;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -30,6 +39,8 @@ import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Locale;
 
 /*
     To fix rendering problems, in build.gradle (Module: app):
@@ -42,10 +53,42 @@ import java.net.URL;
         compile 'com.android.support:design:23.1.1'
  */
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements
+        TextToSpeech.OnInitListener {
 
-    EditText translatedEditText;
-    TextView translationTextView;
+    // Define the spoken language we wish to use
+    // You must install all of these on your phone for text to speech
+    // Settings - Language & Input - Text-to-speech output -
+    // Preferred Engine Settings - Install voice data
+    private Locale currentSpokenLang = Locale.US;
+
+    // Create the Locale objects for languages not in Android Studio
+    private Locale locSpanish = new Locale("es", "MX");
+    private Locale locRussian = new Locale("ru", "RU");
+    private Locale locPortuguese = new Locale("pt", "BR");
+    private Locale locDutch = new Locale("nl", "NL");
+
+    // Stores all the Locales in an Array so they are easily found
+    private Locale[] languages = {locDutch, Locale.FRENCH, Locale.GERMAN, Locale.ITALIAN,
+            locPortuguese, locRussian, locSpanish};
+
+    // Synthesizes text to speech
+    private TextToSpeech textToSpeech;
+
+    // Spinner for selecting the spoken language
+    private Spinner languageSpinner;
+
+    // Currently selected language in Spinner
+    private int spinnerIndex = 0;
+
+    // Will hold all the translations
+    private String[] arrayOfTranslations;
+
+    // User entered text to translate
+    EditText wordsEnteredEditText;
+
+    // Displays the translated text
+    TextView translatedTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,8 +106,57 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        translatedEditText = (EditText) findViewById(R.id.editText);
-        translationTextView = (TextView) findViewById(R.id.translateTextView);
+        wordsEnteredEditText = (EditText) findViewById(R.id.words_entered_edit_text);
+        translatedTextView = (TextView) findViewById(R.id.translated_text_view);
+        textToSpeech = new TextToSpeech(this, this);
+
+        languageSpinner = (Spinner) findViewById(R.id.lang_spinner);
+
+        // When the Spinner is changed, update the currently selected language to speak in
+        languageSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                currentSpokenLang = languages[position];
+
+                // Store the selected Spinner index for use elsewhere
+                spinnerIndex = position;
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+
+            }
+        });
+    }
+
+    // When the app closes shutdown text to speech
+    @Override
+    protected void onDestroy() {
+        if (textToSpeech != null) {
+            textToSpeech.stop();
+            textToSpeech.shutdown();
+        }
+        super.onDestroy();
+    }
+
+    // Initializes text to speech capability
+    @Override
+    public void onInit(int status) {
+        // Check if TextToSpeech is available
+        if (status == TextToSpeech.SUCCESS) {
+
+            int result = textToSpeech.setLanguage(currentSpokenLang);
+
+            // If language data or a specific language isn't available error
+            if (result == TextToSpeech.LANG_MISSING_DATA
+                    || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Toast.makeText(this, "Language Not Supported", Toast.LENGTH_SHORT).show();
+            }
+
+        } else {
+            Toast.makeText(this, "Text To Speech Failed", Toast.LENGTH_SHORT).show();
+        }
+
     }
 
     @Override
@@ -93,11 +185,11 @@ public class MainActivity extends AppCompatActivity {
     public void onTranslateJsonClick(View view) {
 
         // If the user entered words to translate then get the JSON data.
-        if (!isEmpty(translatedEditText)) {
+        if (!isEmpty(wordsEnteredEditText)) {
             Toast.makeText(this, R.string.getting_translations_toast_text, Toast.LENGTH_LONG).show();
 
             // Get the text from EditText. Have to do it here since accessing the UI.
-            String wordsToTranslate = translatedEditText.getText().toString().trim();
+            String wordsToTranslate = wordsEnteredEditText.getText().toString().trim();
 
             // Calls for the method doInBackground to execute
             new SaveTheFeed().execute(wordsToTranslate);
@@ -106,14 +198,6 @@ public class MainActivity extends AppCompatActivity {
             // Post an error message if the didn't enter words.
             Toast.makeText(this, R.string.enter_words_toast_text, Toast.LENGTH_LONG).show();
         }
-    }
-
-    // Check if the user entered words to translate
-    // Returns false if not empty
-    protected boolean isEmpty(EditText editText) {
-        // Get the text in the EditText, convert it into a string, and delete white space
-        // then check length
-        return editText.getText().toString().trim().length() == 0;
     }
 
     // Create an inner class that allows you to perform background operations without
@@ -149,15 +233,12 @@ public class MainActivity extends AppCompatActivity {
             // and TRACE) can be used with setRequestMethod(String)
             HttpURLConnection urlConnection = null;
 
-            // Provides the URL for the post request
-            URL url = null;
-
-            // Allows you to input a stream of bytes from the URL
-            InputStream inputStream = null;
+            // A BufferedReader is used because it is efficient
+            BufferedReader reader = null;
 
             try {
                 // Provide the URL for the POST request
-                url = new URL("http://newjustin.com/translateit.php?action=translations&english_words="
+                URL url = new URL("http://newjustin.com/translateit.php?action=translations&english_words="
                         + wordsToTranslate);
 
                 // Open a new connection as specified by the URL
@@ -170,15 +251,13 @@ public class MainActivity extends AppCompatActivity {
                 urlConnection.setRequestMethod("POST");
 
                 // The client calls for the post request to execute and sends the results back
-                // Get the content sent
-                inputStream = new BufferedInputStream(urlConnection.getInputStream());
+                // Get the content sent, allows you to input a stream of bytes from the URL
+                InputStream inputStream = new BufferedInputStream(urlConnection.getInputStream());
 
-                // A BufferedReader is used because it is efficient
                 // The InputStreamReader converts the bytes into characters
                 // The JSON data is UTF-8 so they are read with that encoding
                 // 8 defines the input buffer size
-                BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(inputStream, "UTF-8"), 8);
+                reader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"), 8);
 
                 // Storing each line of data in a StringBuilder
                 StringBuilder sb = new StringBuilder();
@@ -210,6 +289,11 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
             finally {
+                // Close the bufferedReader which closes the underlying InputStreamReader,
+                // closing the InputStreamReader also closes the underlying FileInputStream
+                close(reader);
+
+                // Release the URL connection
                 if (urlConnection != null) {
                     urlConnection.disconnect();
                 }
@@ -221,8 +305,18 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(Void aVoid) {
 
+            // Make the TextView scrollable
+            translatedTextView.setMovementMethod(new ScrollingMovementMethod());
+
             // Put the translations into the TextView
-            translationTextView.setText(stringToPrint);
+            translatedTextView.setText(stringToPrint);
+
+            // Eliminate the "language :" part of the string for the
+            // translations
+            String stringOfTranslations = stringToPrint.replaceAll("\\w+\\s:","#");
+
+            // Store the translations into an array
+            arrayOfTranslations = stringOfTranslations.split("#");
         }
 
         protected void outputTranslations(JSONArray jsonArray) {
@@ -249,11 +343,11 @@ public class MainActivity extends AppCompatActivity {
     // Calls for the AsyncTask to execute when the translate XML button is clicked
     public void onTranslateXmlClick(View view) {
         // If the user entered words to translate then get the JSON data.
-        if (!isEmpty(translatedEditText)) {
+        if (!isEmpty(wordsEnteredEditText)) {
             Toast.makeText(this, R.string.getting_translations_toast_text, Toast.LENGTH_LONG).show();
 
             // Get the text from EditText. Have to do it here since accessing the UI.
-            String wordsToTranslate = translatedEditText.getText().toString().trim();
+            String wordsToTranslate = wordsEnteredEditText.getText().toString().trim();
 
             // Calls for the method doInBackground to execute
             new GetXMLData().execute(wordsToTranslate);
@@ -297,15 +391,12 @@ public class MainActivity extends AppCompatActivity {
             // and TRACE) can be used with setRequestMethod(String)
             HttpURLConnection urlConnection = null;
 
-            // Provides the URL for the post request
-            URL url = null;
-
-            // Allows you to input a stream of bytes from the URL
-            InputStream inputStream = null;
+            // A BufferedReader is used because it is efficient
+            BufferedReader reader = null;
 
             try {
                 // Provide the URL for the POST request
-                url = new URL("http://newjustin.com/translateit.php?action=xmltranslations&english_words="
+                URL url = new URL("http://newjustin.com/translateit.php?action=xmltranslations&english_words="
                         + wordsToTranslate);
 
                 // Open a new connection as specified by the URL
@@ -318,15 +409,14 @@ public class MainActivity extends AppCompatActivity {
                 urlConnection.setRequestMethod("POST");
 
                 // The client calls for the post request to execute and sends the results back
-                // Get the content sent
-                inputStream = new BufferedInputStream(urlConnection.getInputStream());
+                // Get the content sent, allows you to input a stream of bytes from the URL
+                InputStream inputStream = new BufferedInputStream(urlConnection.getInputStream());
 
                 // A BufferedReader is used because it is efficient
                 // The InputStreamReader converts the bytes into characters
                 // The XML data is UTF-8 so they are read with that encoding
                 // 8 defines the input buffer size
-                BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(inputStream, "UTF-8"), 8);
+                reader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"), 8);
 
                 // Storing each line of data in a StringBuilder
                 StringBuilder sb = new StringBuilder();
@@ -386,6 +476,11 @@ public class MainActivity extends AppCompatActivity {
             } catch (XmlPullParserException e) {
                 e.printStackTrace();
             } finally {
+                // Close the bufferedReader which closes the underlying InputStreamReader,
+                // closing the InputStreamReader also closes the underlying FileInputStream
+                close(reader);
+
+                // Release the URL connection
                 if (urlConnection != null) {
                     urlConnection.disconnect();
                 }
@@ -397,8 +492,102 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(Void aVoid) {
 
+            // Make the TextView scrollable
+            translatedTextView.setMovementMethod(new ScrollingMovementMethod());
+
             // Put the translations into the TextView
-            translationTextView.setText(stringToPrint);
+            translatedTextView.setText(stringToPrint);
+
+            // Eliminate the "language :" part of the string for the
+            // translations
+            String stringOfTranslations = stringToPrint.replaceAll("\\w+\\s:","#");
+
+            // Store the translations into an array
+            arrayOfTranslations = stringOfTranslations.split("#");
         }
     }
+
+    // Converts speech to text
+    public void acceptSpeechInput(View view) {
+        // Starts an Activity that will convert speech to text
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+
+        // Use a language model based on free-form speech recognition
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+
+        // Recognize speech based on the default speech of device
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+
+        // Prompt the user to speak
+        intent.putExtra(RecognizerIntent.EXTRA_PROMPT,
+                getString(R.string.speech_input_phrase));
+
+        try{
+            startActivityForResult(intent, 100);
+
+        } catch (ActivityNotFoundException e){
+
+            Toast.makeText(this, getString(R.string.stt_not_supported_message), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    public void readTheText(View view) {
+        // Set the voice to use
+        textToSpeech.setLanguage(currentSpokenLang);
+
+        // Check that translations are in the array
+        if (arrayOfTranslations != null && arrayOfTranslations.length >= 9){
+
+            // There aren't voices for our first 3 languages so skip them
+            // QUEUE_FLUSH deletes previous text to read and replaces it
+            // with new text
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                textToSpeech.speak(arrayOfTranslations[spinnerIndex + 4], TextToSpeech.QUEUE_FLUSH,
+                        null, null);
+            } else {
+                textToSpeech.speak(arrayOfTranslations[spinnerIndex + 4], TextToSpeech.QUEUE_FLUSH,
+                        null);
+            }
+        } else {
+
+            Toast.makeText(this, "Translate Text First", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // The results of the speech recognizer are sent here
+    protected void onActivityResult(int requestCode, int resultCode, Intent data){
+
+        // 100 is the request code sent by startActivityForResult
+        if((requestCode == 100) && (data != null) && (resultCode == RESULT_OK)){
+
+            // Store the data sent back in an ArrayList
+            ArrayList<String> spokenText = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+
+            // Put the spoken text in the EditText
+            wordsEnteredEditText.setText(spokenText.get(0));
+        }
+    }
+
+    // Check if the user entered words to translate
+    // Returns false if not empty
+    protected boolean isEmpty(EditText editText) {
+        // Get the text in the EditText, convert it into a string, and delete white space
+        // then check length
+        return editText.getText().toString().trim().length() == 0;
+    }
+
+    // Gracefully close that which is closeable
+    public static void close(Closeable c) {
+        if (c == null) {
+            return;
+        }
+
+        try {
+            c.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 }
