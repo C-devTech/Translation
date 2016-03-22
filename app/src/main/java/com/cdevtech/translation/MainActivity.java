@@ -498,12 +498,14 @@ public class MainActivity extends AppCompatActivity implements
             // Put the translations into the TextView
             translatedTextView.setText(stringToPrint);
 
-            // Eliminate the "language :" part of the string for the
+            // Eliminate the "language : " part of the string for the
             // translations
-            String stringOfTranslations = stringToPrint.replaceAll("\\w+\\s:","#");
+            // String stringOfTranslations = stringToPrint.replaceAll("\\w+\\s:\\s","#");
+            String stringOfTranslations = stringToPrint.replaceAll("\\w+\\s:\\s","");
 
             // Store the translations into an array
-            arrayOfTranslations = stringOfTranslations.split("#");
+            // arrayOfTranslations = stringOfTranslations.split("#");
+            arrayOfTranslations = stringOfTranslations.split("\n");
         }
     }
 
@@ -543,10 +545,10 @@ public class MainActivity extends AppCompatActivity implements
             // QUEUE_FLUSH deletes previous text to read and replaces it
             // with new text
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                textToSpeech.speak(arrayOfTranslations[spinnerIndex + 4], TextToSpeech.QUEUE_FLUSH,
+                textToSpeech.speak(arrayOfTranslations[spinnerIndex + 3], TextToSpeech.QUEUE_FLUSH,
                         null, null);
             } else {
-                textToSpeech.speak(arrayOfTranslations[spinnerIndex + 4], TextToSpeech.QUEUE_FLUSH,
+                textToSpeech.speak(arrayOfTranslations[spinnerIndex + 3], TextToSpeech.QUEUE_FLUSH,
                         null);
             }
         } else {
