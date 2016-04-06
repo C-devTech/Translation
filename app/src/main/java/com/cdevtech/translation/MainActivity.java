@@ -247,6 +247,9 @@ public class MainActivity extends AppCompatActivity implements
                 // Define that the data expected is in JSON format
                 urlConnection.setRequestProperty("Content-type", "application/json");
 
+                // Sets the default request method as POST
+                urlConnection.setDoOutput(true);
+
                 // Define the request method as POST, default is POST but provides example code
                 urlConnection.setRequestMethod("POST");
 
@@ -404,6 +407,9 @@ public class MainActivity extends AppCompatActivity implements
 
                 // Define that the data expected is in XML format
                 urlConnection.setRequestProperty("Content-type", "text/xml");
+
+                // Sets the default request method as POST
+                urlConnection.setDoOutput(true);
 
                 // Define the request method as POST, default is POST but provides example code
                 urlConnection.setRequestMethod("POST");
